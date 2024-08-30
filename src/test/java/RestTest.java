@@ -1,6 +1,7 @@
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigObject;
+import io.restassured.filter.session.SessionFilter;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -26,11 +27,31 @@ public class RestTest {
             "Овощ", "VEGETABLE"
     );
 
+    private String name;
+    private String type;
+    private Object isExotic;
+    SessionFilter sessionFilter = new SessionFilter();
+
+    @ParameterizedTest
+    @MethodSource("getParameters")
+    @DisplayName("Тест рабочего процесса для товара")
+    void testFoodWorkflow(String name, String type, Object isExotic) {
+        this.name = name;
+        this.type = type;
+        this.isExotic = isExotic;
+        testGetFoodList();
+        testAddFood();
+        testCheckFoodExistence();
+        testResetTestData();
+    }
+
+    @Disabled("Запускается только в testFoodWorkflow")
     @Test
     @DisplayName("Получение списка товаров")
     @Order(1)
     void testGetFoodList() {
         given()
+                .filter(sessionFilter)
                 .baseUri(URL)
                 .when()
                 .get("/api/food")
@@ -40,12 +61,13 @@ public class RestTest {
                 .body("size()", equalTo(NUMBER_PRODUCTS));
     }
 
-    @ParameterizedTest
-    @MethodSource("getParameters")
+    @Disabled("Запускается только в testFoodWorkflow")
+    @Test
     @DisplayName("Добавление товара")
     @Order(2)
-    void testAddFood(String name, String type, Object isExotic) {
+    void testAddFood() {
         given()
+                .filter(sessionFilter)
                 .baseUri(URL)
                 .contentType(ContentType.JSON)
                 .body("{\n" +
@@ -59,57 +81,13 @@ public class RestTest {
                 .statusCode(200);
     }
 
+    @Disabled("Запускается только в testFoodWorkflow")
     @Test
-    @DisplayName("Проверка наличия товара. В данном тесте товара №4")
+    @DisplayName("Проверка наличия товара.")
     @Order(3)
     void testCheckFoodExistence() {
         given()
-                .baseUri(URL)
-                .when()
-                .get("/api/food")
-                .then()
-                .log().all()
-                .assertThat()
-                .statusCode(200)
-                .body("[" + (NUMBER_PRODUCTS - 1) + "].name", equalTo("Яблоко"))
-                .body("[" + (NUMBER_PRODUCTS - 1) + "].type", equalTo("FRUIT"))
-                .body("[" + (NUMBER_PRODUCTS - 1) + "].exotic", equalTo(false));
-    }
-
-    @Test
-    @DisplayName("Сброс тестовых данных")
-    @Order(4)
-    void testResetTestData() {
-        given()
-                .baseUri(URL)
-                .when()
-                .post("/api/data/reset")
-                .then().log().all()
-                .statusCode(200);
-    }
-
-    @Disabled("Не работает в локальной версии, так как после каждого запроса база обнуляется." +
-            "И я бы не делал такой метод, был бы класс с отдельными методами. Это просто пример " +
-            "с логикой как работало бы.")
-    @ParameterizedTest
-    @MethodSource("getParameters")
-    @DisplayName("Тест рабочего процесса для товара")
-    @Order(5)
-    void testFoodWorkflow(String name, String type, Object isExotic) {
-        given()
-                .baseUri(URL)
-                .contentType(ContentType.JSON)
-                .body("{\n" +
-                        "  \"name\": \"" + name + "\",\n" +
-                        "  \"type\": \"" + type + "\",\n" +
-                        "  \"exotic\": " + isExotic + "\n" +
-                        "}")
-                .when()
-                .post("/api/food")
-                .then().log().all()
-                .statusCode(200);
-
-        given()
+                .filter(sessionFilter)
                 .baseUri(URL)
                 .when()
                 .get("/api/food")
@@ -120,8 +98,15 @@ public class RestTest {
                 .body("[" + NUMBER_PRODUCTS + "].name", equalTo(name))
                 .body("[" + NUMBER_PRODUCTS + "].type", equalTo(type))
                 .body("[" + NUMBER_PRODUCTS + "].exotic", equalTo(isExotic));
+    }
 
+    @Disabled("Запускается только в testFoodWorkflow")
+    @Test
+    @DisplayName("Сброс тестовых данных")
+    @Order(4)
+    void testResetTestData() {
         given()
+                .filter(sessionFilter)
                 .baseUri(URL)
                 .when()
                 .post("/api/data/reset")
